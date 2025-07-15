@@ -1,68 +1,43 @@
 from telegram import Update
-from flask import Flask, request
-import os
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    ContextTypes,
-    CallbackContext
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import logging
+import os
 
 # Настройка логов
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-TOKEN = "8072440393:AAHJloXf5KWoL5sZXLbcIpwmB2Da_xaEUuU"  # Замените на ваш токен!
+TOKEN = os.getenv("TOKEN")  # Берётся из переменных среды Render!
+SECRET_TOKEN = os.getenv("SECRET_TOKEN")  # Добавьте в настройки Render
 
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
-# Обработчики команд
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Привет, {update.effective_user.first_name}! 😊")
+# Команда /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я работаю через вебхук.")
 
-async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Ты написал: {update.message.text}")
+# Эхо-ответ
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"Вы сказали: {update.message.text}")
 
 # Регистрация обработчиков
-application.add_handler(CommandHandler("start", start_command))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_message))
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
-# Режим Webhook (для сервера)
-app = Flask(__name__)
+# Вебхук
+async def set_webhook():
+    await application.bot.delete_webhook()  # Сброс старого вебхука
+    await application.bot.set_webhook(
+        url=f"https://{os.getenv('RENDER_EXTERNAL_URL')}/webhook",
+        secret_token=SECRET_TOKEN
+    )
 
-@app.route('/')
-def home():
-    return "Bot is running!"
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    application.update_queue.put(update)
-    return "OK", 200
-
-def run_polling():
-    """Запуск бота в режиме Long Polling (для локального тестирования)"""
-    application.run_polling()
-
-def run_webhook():
-    """Запуск бота в режиме Webhook (для сервера)"""
+if __name__ == "__main__":
+    # Только вебхук!
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 10000)),
-        webhook_url="https://your-render-url.onrender.com/webhook",
-        secret_token="YOUR_SECRET_TOKEN"
+        webhook_url=f"https://{os.getenv('RENDER_EXTERNAL_URL')}/webhook",
+        secret_token=SECRET_TOKEN
     )
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "webhook":
-        run_webhook()
-    else:
-        run_polling()  # По умолчанию для локального тестирования
