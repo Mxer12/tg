@@ -1,58 +1,60 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import logging
 import os
-import asyncio
+import logging
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Настройка логов
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TOKEN = os.getenv("TOKEN")  # Берётся из переменных среды Render!
-SECRET_TOKEN = os.getenv("SECRET_TOKEN")  # Добавьте в настройки Render
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")  # URL вашего сервиса в Render
+app = Flask(__name__)
 
-if not all([TOKEN, SECRET_TOKEN, RENDER_EXTERNAL_URL]):
-    raise ValueError("Не заданы все необходимые переменные окружения!")
+# Конфигурация
+TOKEN = os.getenv("TOKEN")
+SECRET_TOKEN = os.getenv("SECRET_TOKEN")
+RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME")  # Автоматически в Render
+WEBHOOK_URL = f"https://{RENDER_HOST}/webhook"
+
+# Проверка переменных
+if not all([TOKEN, SECRET_TOKEN, RENDER_HOST]):
+    raise ValueError("Missing environment variables!")
 
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
+# Роут для проверки работы сервера
+@app.route("/")
+def home():
+    return "Bot is ready!", 200
+
+# Вебхук-роут
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != SECRET_TOKEN:
+        return "Forbidden", 403
+    
+    json_data = await request.get_json()
+    update = Update.de_json(json_data, application.bot)
+    await application.process_update(update)
+    return "OK", 200
+
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Бот работает через вебхук!")
+    await update.message.reply_text("Bot is alive via webhook!")
 
-# Эхо-ответ
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Вы сказали: {update.message.text}")
-
-# Регистрация обработчиков
 application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
 async def setup_webhook():
-    await application.bot.delete_webhook()  # Сброс старого вебхука
-    webhook_url = f"https://{RENDER_EXTERNAL_URL}/webhook"
-    logger.info(f"Устанавливаю вебхук на: {webhook_url}")
+    await application.bot.delete_webhook()
     await application.bot.set_webhook(
-        url=webhook_url,
+        url=WEBHOOK_URL,
         secret_token=SECRET_TOKEN
     )
+    logger.info(f"Webhook set to: {WEBHOOK_URL}")
 
 if __name__ == "__main__":
-    # Установка вебхука перед запуском
-    loop = asyncio.get_event_loop()
+    import asyncio
+    loop = asyncio.new_event_loop()
     loop.run_until_complete(setup_webhook())
-    
-    # Запуск приложения
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        webhook_url=f"https://{RENDER_EXTERNAL_URL}/webhook",
-        secret_token=SECRET_TOKEN,
-        cert=None,  # В Render SSL уже настроен
-        drop_pending_updates=True
-    )
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
