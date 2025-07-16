@@ -1,8 +1,8 @@
-import os
-import logging
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+import logging
+import os
 
 # Настройка логов
 logging.basicConfig(level=logging.INFO)
@@ -10,51 +10,49 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Конфигурация
 TOKEN = os.getenv("TOKEN")
 SECRET_TOKEN = os.getenv("SECRET_TOKEN")
-RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME")  # Автоматически в Render
-WEBHOOK_URL = f"https://{RENDER_HOST}/webhook"
-
-# Проверка переменных
-if not all([TOKEN, SECRET_TOKEN, RENDER_HOST]):
-    raise ValueError("Missing environment variables!")
+WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
 
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
-# Роут для проверки работы сервера
 @app.route("/")
 def home():
     return "Bot is ready!", 200
 
-# Вебхук-роут
 @app.route("/webhook", methods=["POST"])
-async def webhook():
-    if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != SECRET_TOKEN:
-        return "Forbidden", 403
-    
-    json_data = await request.get_json()
-    update = Update.de_json(json_data, application.bot)
-    await application.process_update(update)
-    return "OK", 200
+def webhook():
+    if request.method == "POST":
+        # Проверка секретного токена
+        if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != SECRET_TOKEN:
+            logger.warning("Invalid secret token")
+            return "Forbidden", 403
 
-# Команда /start
+        try:
+            json_data = request.get_json()
+            if not json_data:
+                return "Bad Request", 400
+
+            # Синхронная обработка
+            update = Update.de_json(json_data, application.bot)
+            application.update_queue.put(update)  # Добавляем update в очередь
+            return "OK", 200
+        except Exception as e:
+            logger.error(f"Error: {str(e)}")
+            return f"Error: {str(e)}", 500
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot is alive via webhook!")
+    await update.message.reply_text("Bot is working!")
 
 application.add_handler(CommandHandler("start", start))
 
-async def setup_webhook():
-    await application.bot.delete_webhook()
-    await application.bot.set_webhook(
-        url=WEBHOOK_URL,
-        secret_token=SECRET_TOKEN
-    )
-    logger.info(f"Webhook set to: {WEBHOOK_URL}")
-
 if __name__ == "__main__":
-    import asyncio
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(setup_webhook())
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
+    # Установка вебхука
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 10000)),
+        webhook_url=WEBHOOK_URL,
+        secret_token=SECRET_TOKEN,
+        drop_pending_updates=True
+    )
