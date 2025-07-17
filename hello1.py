@@ -17,9 +17,13 @@ WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
-@app.route("/")
+@app.route("/")  # Явно разрешаем HEAD
 def home():
     return "Bot is ready!", 200
+
+@app.route("/health", methods=["GET", "HEAD"])
+def health_check():
+    return "OK", 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
