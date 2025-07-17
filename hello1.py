@@ -21,9 +21,9 @@ application = Application.builder().token(TOKEN).build()
 def home():
     return "Bot is ready!", 200
 
-@app.route("/health", methods=["GET", "HEAD"])
-def health_check():
-    return "OK", 200
+@app.route("/ping", methods=["POST"])  # Только POST
+def ping():
+    return "pong", 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
