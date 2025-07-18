@@ -17,13 +17,16 @@ WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
-@app.route("/")  # Явно разрешаем HEAD
-def home():
-    return "Bot is ready!", 200
+@app.route('/api/data', methods=['POST'])  # Явно указываем методы
+def handle_data():
+    return "Данные получены!"
 
-@app.route("/ping", methods=["POST"])  # Только POST
-def ping():
-    return "pong", 200
+# Или несколько методов:
+@app.route('/api/data', methods=['GET', 'POST'])
+def data():
+    if request.method == 'POST':
+        return "POST запрос"
+    return "GET запрос"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
