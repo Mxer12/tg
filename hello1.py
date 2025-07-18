@@ -22,9 +22,9 @@ CORS(app, resources={
   r"/api/*": {"methods": ["GET", "POST", "PUT", "DELETE"]}
 })
 
-@app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["GET"])
 def webhook():
-    if request.method == "POST":
+    if request.method == "GET":
         # Проверка секретного токена
         if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != SECRET_TOKEN:
             logger.warning("Invalid secret token")
