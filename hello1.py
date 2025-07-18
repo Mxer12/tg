@@ -18,6 +18,17 @@ WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
 # Инициализация бота
 application = Application.builder().token(TOKEN).build()
 
+@app.route('/api/data', methods=['POST'])  # Явно указываем методы
+def handle_data():
+    return "Данные получены!"
+
+# Или несколько методов:
+@app.route('/api/data', methods=['GET', 'POST'])
+def data():
+    if request.method == 'POST':
+        return "POST запрос"
+    return "GET запрос"
+
 CORS(app, resources={
   r"/api/*": {"methods": ["GET", "POST", "PUT", "DELETE"]}
 })
