@@ -34,7 +34,6 @@ def webhook():
     # Разрешаем запросы от всех источников (для теста)
     response = jsonify({"status": "OK"})
     response.headers.add("Access-Control-Allow-Origin", "*")
-    return response
 
     try:
         json_data = request.get_json()
