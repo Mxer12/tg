@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+port = int(os.getenv("PORT", 10000))
+app.run(host="0.0.0.0", port=port)
+
 TOKEN = os.getenv("TOKEN")
 SECRET_TOKEN = os.getenv("SECRET_TOKEN")
 WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook"
