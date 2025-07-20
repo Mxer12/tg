@@ -4,6 +4,16 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 import logging
 import os
 from flask_cors import CORS
+from telegram import Bot
+
+async def setup_webhook():
+    bot = Bot(token=TOKEN)
+    await bot.delete_webhook()  # Удаляем старый вебхук
+    await bot.set_webhook(
+        url=WEBHOOK_URL,
+        secret_token=SECRET_TOKEN,
+        drop_pending_updates=True
+    )
 
 # Настройка логов
 logging.basicConfig(level=logging.INFO)
