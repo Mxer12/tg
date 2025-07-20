@@ -35,8 +35,9 @@ def webhook():
         if not json_data:
             return "Bad Request", 400
 
+        # Синхронная обработка
         update = Update.de_json(json_data, application.bot)
-        application.update_queue.put(update)
+        application.update_queue.put(update)  # Добавляем update в очередь
         return "OK", 200
     except Exception as e:
         logger.error(f"Error: {str(e)}")
@@ -47,18 +48,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 application.add_handler(CommandHandler("start", start))
 
-def run_flask():
-    port = int(os.getenv("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
 if __name__ == "__main__":
-    # Установка вебхука (если нужно)
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.getenv("PORT", 10000)),
-        webhook_url=WEBHOOK_URL,
-        secret_token=SECRET_TOKEN,
-        drop_pending_updates=True
-    )
-    # Запуск Flask отдельно (если нужно)
-    run_flask()
+    # Или для вебхуков:
+     application.run_webhook(
+         listen="0.0.0.0",
+         port=int(os.getenv("PORT", 10000)),
+         webhook_url=WEBHOOK_URL,
+         secret_token=SECRET_TOKEN,
+         drop_pending_updates=True
+     )
