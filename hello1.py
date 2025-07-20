@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 port = int(os.getenv("PORT", 10000))
-app.run(host="0.0.0.0", port=port)
 
 TOKEN = os.getenv("TOKEN")
 SECRET_TOKEN = os.getenv("SECRET_TOKEN")
@@ -53,12 +52,12 @@ application.add_handler(CommandHandler("start", start))
 
 if __name__ == "__main__":
     # Установка вебхука
-    application.run_polling()  # Для локального тестирования можно использовать polling
+    # Для локального тестирования можно использовать polling
     # Или для вебхуков:
-    # application.run_webhook(
-    #     listen="0.0.0.0",
-    #     port=int(os.getenv("PORT", 10000)),
-    #     webhook_url=WEBHOOK_URL,
-    #     secret_token=SECRET_TOKEN,
-    #     drop_pending_updates=True
-    # )
+     application.run_webhook(
+         listen="0.0.0.0",
+         port=int(os.getenv("PORT", 10000)),
+         webhook_url=WEBHOOK_URL,
+         secret_token=SECRET_TOKEN,
+         drop_pending_updates=True
+     )
