@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "bundle": "^2.1.0",
-    "telegraf": "^4.16.3"
-  }
-}
