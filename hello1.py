@@ -56,9 +56,6 @@ async def set_webhook():
 
 # Запуск Flask и бота
 if __name__ == "__main__":
-    # Локальный запуск (polling)
-    application.run_polling()
-else:
     # На Render: запускаем Flask и устанавливаем вебхук
     from threading import Thread
     def run_flask():
